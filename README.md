@@ -1,6 +1,15 @@
 # CS 7389F Spring 2025 Preamble
 
-This is the code for final project for CS 7389F based on the Gotham IoT Testbed paper (cited below). I ran into many reproducibility issues with the original code repository, so most of my time was spent debugging and trying to reproduce the bare minimum functionality. I go into more detail on this topic in the [Reproducibility Issues](#Reproducibility Issues) section.
+This is the code for final project for CS 7389F based on the Gotham IoT Testbed paper (cited below). I ran into many issues with trying to get the original code repository to work, so most of my time was spent debugging and trying to reproduce the bare minimum functionality. I go into more detail on this topic in the [Reproducibility Issues](#reproducibility-issues) section.
+
+## New version of the Gotham Scenario
+
+As part of this project, I created a new version of the Gotham network with an additional layer of routers in front of each cluster of nodes within a neighborhood. This enables a study of the impact of additional firewall/indirection layers on the speed and transmissibility of various attacks. For example, Mirai bots are constantly doing wide scans on the network to find vulnerable devices, and this may be affected by these additional routers.
+
+To use this alternative topology, use `./create_topology_gotham2.py` instead of `./create_topology_gotham.py` when creating the topology in [section 6](#6-topology-builder). 
+```bash
+$ python3 ./create_topology_gotham2.py
+```
 
 ## Reproducibility Issues
 
@@ -11,12 +20,11 @@ System: Ubuntu 24.04.2 LTS
 | Was unable to capture packets in the original [gotham-iot-testbed](https://github.com/xsaga/gotham-iot-testbed) repo | Switched to this downstream GothX repo | 
 | Dependency aler9/rtsp-simple-server was deprecated on April 9, 2025, replaced by [bluenviron/mediamtx](https://hub.docker.com/r/bluenviron/mediamtx) | Changed stream_server's Dockerfile to use new image/repo |
 | GothX: Gotham scenario missing links between main backbone routers | Re-added [the relevant code from the original repository](https://github.com/xsaga/gotham-iot-testbed/blob/master/src/create_topology_gotham.py#L166) |
-| CICflowmeter ignores IPv6 packets, discarding all Gotham packets | Enabled reading IPv6 header in CICFlowMeter/src/main/java/cic/cs/unb/ca/jnetpcap/PacketReader.java |
-
+| CICflowmeter ignores IPv6 packets, discarding all Gotham packets | Enabled reading IPv6 header in CICFlowMeter's [PacketReader.java](https://github.com/Averyvan/CS-7389F-final/blob/main/CICFlowMeter/src/main/java/cic/cs/unb/ca/ifm/Cmd.java) |
 
 # GothX: a generator of customizable, legitimate and malicious IoT network traffic
 
-This section and beyond are from the original GothX repository, with some sections irrelevant to the project removed.
+This section and beyond are from the original GothX repository, with some sections that were irrelevant to the project removed, and a few clarifying details added.
 
 This repository is a fork from [PekeDevil Gotham Testbed](https://github.com/PekeDevil/gotham-iot-testbed) (X. Sáez-de-Cámara, J. L. Flores, C. Arellano, A. Urbieta and U. Zurutuza, "Gotham Testbed: A Reproducible IoT Testbed for Security Experiments and Dataset Generation," in IEEE Transactions on Dependable and Secure Computing, doi: 10.1109/TDSC.2023.3247166)
 
@@ -40,8 +48,7 @@ If you use or build upon this testbed, please consider citing the article.
   * [2 Python virtual environment](#2-python-virtual-environment)
   * [3 Template creation](#3-template-creation)
     + [3.1 Build Docker images](#31-build-docker-images)
-      - [3.1 Alternative A: SINETStream topology](#31-alternative-a--sinetstream-topology)
-      - [3.1 Alternative B: Gotham topology](#31-alternative-b--gotham-topology)
+      - [3.1 Alternative B: Gotham topology](#31-gotham-topology)
     + [notes](#notes)
   * [4.1 start gns3](#41-start-gns3)
   * [5 Templates creation](#5-templates-creation)
@@ -52,12 +59,10 @@ If you use or build upon this testbed, please consider citing the article.
       - [Option2: Create router template automatically without gui](#option2--create-router-template-automatically-without-gui)
 - [GothX usage](#gothx-usage)
   * [6 Topology builder](#6-topology-builder)
-      - [6.1 Gotham topology](#61-alternative-b--gotham-topology)
+      - [6.1 Gotham topology](#61-gotham-topology)
   * [7 Scenario execution](#7-scenario-execution)
-      - [7.1 Gotham topology](#71-alternative-b--gotham-topology)
-      - [Possible HTTP error 409 Client Error](#possible-http-error-409-client-error)
+      - [7.1 Gotham topology](#71-gotham-topology)
   * [8 pcap labelling](#8-pcap-labelling)
-- [Contact](#contact)
 
 
 # Download the datasets generated with GothX
@@ -127,23 +132,7 @@ The build process of some Docker images depend on other images; instead of build
 #### 3.1 Gotham topology
 Run `make` to automatically build all the Docker images in the correct order:
 ```
-$ make
-```
-Currently `make` alone fails with
-
-```text
-docker build --file Dockerfiles/malware/Mirai/Dockerfile.builder --tag iotsim/mirai-builder Dockerfiles/malware/Mirai
-[...]
-Step 5/25 : RUN git clone https://github.com/jgamblin/Mirai-Source-Code.git
- ---> Using cache
- ---> fb4b9797e4ee
-Step 6/25 : RUN mkdir go &&    go get github.com/go-sql-driver/mysql &&    go get github.com/mattn/go-shellwords
- ---> Running in 0739859c03c6
-# filippo.io/edwards25519
-go/src/filippo.io/edwards25519/scalar.go:166:53: cannot convert x (type []byte) to type *[32]byte
-The command '/bin/sh -c mkdir go &&    go get github.com/go-sql-driver/mysql &&    go get github.com/mattn/go-shellwords' returned a non-zero code: 2
-make: *** [Makefile:81: buildstatus/Mirai_builder] Error 2
-
+$ make -j
 ```
 
 ### notes
@@ -207,36 +196,14 @@ Inside the `src` directory, run:
 
 GNS3 must be running.
 
-#### 6.1 Alternative A: SINETStream (and MQTTSet) topology
-
-- Optional: in [config_sinetstream.py](./src/config_sinetstream.py), choose a project name 
-
-You can choose among various pre-configured topologies of different sizes.
-
-| type of topology  | description                                        | composition                                 |
-|-------------------|----------------------------------------------------|---------------------------------------------|
-| sinetstream_small | recommended to get familiar with GothX             | 14 sensors, 3 MQTT brokers, 1 Kafka broker  | 
-| sinetstream_big   | it is the topology represented on the image bellow | 115 sensors, 3 MQTT brokers, 1 Kafka broker |
-| sinetstream_max   | maximum GothX topology without code modification   | 450 sensors, 3 MQTT brokers, 1 Kafka broker |
-| mqttset           | topology used to reproduce MQTTSet `*`             | 10 sensors, 1 MQTT brokers                  |
-
-`*` to reproduce MQTTSet [see this other instructions file](./README_MQTTSet.md).
-
-- run a preconfigured tologoly (here `sinetstream_big`)
-
-```bash
-(venv) $ python3 create_topology_sinetstream.py sinetstream_big
-```
-
-Image shows topology `sinetstream_big` on GNS3 Graphical Interface
-![topology image](./img/gns3_topology_sinetstream_big.png)
-
-#### 6.1 Alternative B: Gotham topology
+#### 6.1 Gotham topology
 
 Inside the `./src` directory run:
 ```bash
 (venv) $ python3 create_topology_gotham.py
 ```
+
+Avery's note: Or use `create_topology_gotham2.py` for the more segmented version!
 
 ![gns3 topology](img/gns3_topology.png)
 
@@ -244,17 +211,7 @@ Inside the `./src` directory run:
 
 GNS3 must be running.
 
-#### 7.1 Alternative A: SINETStream topology
-
-Inside the `src/` directory :
-
-- in [config_sinetstream.py](./src/config_sinetstream.py), choose settings about the legitimate and malicious traffic that will be generated 
-- run the scenario
-```bash
-(venv) $ python3 run_scenario_sinetstream.py
-```
-
-#### 7.1 Alternative B: Gotham topology
+#### 7.1 Gotham topology
 
 Inside the `src/` directory, run the scenario
 
@@ -264,30 +221,8 @@ Inside the `src/` directory, run the scenario
 
 ## 8 pcap labelling
 
-1. from a pcap file, extract network flows with [CICFlowMeter](https://github.com/GintsEngelen/CICFlowMeter), you get a csv file with features
-2. Use the script [labelling.py](./labelling.py) to add the labels of each attack step
+From a pcap file, extract network flows with [CICFlowMeter](https://github.com/GintsEngelen/CICFlowMeter), you get a csv file with features. 
+
+Avery's note: I recommend using the docker instructions and use the included version of the program.
 
 
-# Other 
-
-#### Possible HTTP error 409 Client Error 
-
-You may need to **restart your user session to refresh user permissions**, in case you encounter error like one of the following
-
-```text
-uBridge is not available, path doesn't exist, or you just installed GNS3 and need to restart your user session to refresh user permissions.
-```
-or
-
-```text
-Traceback (most recent call last):
-  File "~/gotham-iot-testbed/venv_gotham/lib/python3.12/site-packages/gns3fy/gns3fy.py", line 141, in http_call
-    _response.raise_for_status()
-  File "~/gotham-iot-testbed/venv_gotham/lib/python3.12/site-packages/requests/models.py", line 1024, in raise_for_status
-    raise HTTPError(http_error_msg, response=self)
-requests.exceptions.HTTPError: 409 Client Error: Conflict for url: http://localhost:3080/v2/projects/7666c9a4-ddc1-41e5-8c3d-5f235bd18073/nodes/faeece40-a02c-450c-8870-d7766b29b3bd/start
-```
-409
-# Contact
-
-manuel[dot]poisson[at]irisa[dot]fr
