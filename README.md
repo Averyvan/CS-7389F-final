@@ -7,7 +7,7 @@ This is the code for final project for CS 7389F based on the Gotham IoT Testbed 
 System: Ubuntu 24.04.2 LTS
 
 | Issue | Fix |
-| ... | ... |
+| --- | --- |
 | Was unable to capture packets in the original [gotham-iot-testbed](https://github.com/xsaga/gotham-iot-testbed) repo | Switched to this downstream GothX repo | 
 | Dependency aler9/rtsp-simple-server was deprecated on April 9, 2025, replaced by [bluenviron/mediamtx](https://hub.docker.com/r/bluenviron/mediamtx) | Changed stream_server's Dockerfile to use new image/repo |
 | GothX: Gotham scenario missing links between main backbone routers | Re-added [the relevant code from the original repository](https://github.com/xsaga/gotham-iot-testbed/blob/master/src/create_topology_gotham.py#L166) |
