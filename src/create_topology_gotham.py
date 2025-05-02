@@ -8,9 +8,10 @@ import time
 from gns3utils import *
 
 PROJECT_NAME = "test"
-PROJECT_NAME = "gotham_scenario_231214"
+PROJECT_NAME = "gotham_scenario_mirai"
 AUTO_CONFIGURE_ROUTERS = True
-CREATE_MIRAI_NODES = False
+#CREATE_MIRAI_NODES = False
+CREATE_MIRAI_NODES = True
 
 check_resources()
 check_local_gns3_config()
@@ -79,7 +80,7 @@ hydraulic_system_template_id = get_template_id_from_name(templates, "iotsim-hydr
 assert hydraulic_system_template_id
 building_monitor_template_id = get_template_id_from_name(templates, "iotsim-building-monitor")
 assert building_monitor_template_id
-domotic_monitor_template_id = get_template_id_from_name(templates, "iotsim-domotic-monitor")
+domotic_monitor_template_id = get_template_id_from_name(templates, "iotsim-domotic-monitor-bis")
 assert domotic_monitor_template_id
 coap_server_template_id = get_template_id_from_name(templates, "iotsim-coap-server")
 assert coap_server_template_id
@@ -154,6 +155,9 @@ rnorth = create_node(server, project, coord_rnorth.x, coord_rnorth.y, router_tem
 rwest = create_node(server, project, coord_rwest.x, coord_rwest.y, router_template_id)
 reast = create_node(server, project, coord_reast.x, coord_reast.y, router_template_id)
 
+create_link(server, project, rnorth["node_id"], 1, rwest["node_id"], 1)
+create_link(server, project, rnorth["node_id"], 2, reast["node_id"], 1)
+create_link(server, project, rwest["node_id"], 2, reast["node_id"], 2)
 
 #####################
 # backbone switches #
