@@ -3,14 +3,18 @@
 import re
 import sys
 import time
+import os
 
 import docker
 
 from gns3utils import *
 
 PROJECT_NAME = "gotham_scenario"
-PROJECT_NAME = "gotham_scenario_231129_1107"
-RUN_MIRAI = False
+#PROJECT_NAME = "gotham_scenario_231129_1107"
+#PROJECT_NAME = "gotham_scenario_mirai"
+PROJECT_NAME = "gotham_scenario_mirai_new"
+#RUN_MIRAI = False
+RUN_MIRAI = True
 
 check_resources()
 check_local_gns3_config()
@@ -85,14 +89,18 @@ for n in sorted(iot_rest, key=lambda x: x.name):
     start_node(server, project, n.id)
     time.sleep(0.1)
 
-for i in range(5):
-    print(f"waiting capture {i}/5")
-    time.sleep(60)
+#for i in range(5):
+#    print(f"waiting capture {i}/5")
+#    time.sleep(60)
 
 if RUN_MIRAI:
     mirai_bot = next(filter(lambda i: i.name == "iotsim-mirai-bot-1", all_iot))
     container_mirai_bot = docker_client.containers.get(get_node_docker_container_id(server, project, mirai_bot.id))
     container_mirai_bot.update(mem_limit="512m", memswap_limit=-1, cpuset_cpus="0", cpu_period=100000, cpu_quota=10000)
+
+for i in range(5):
+    print(f"waiting capture {i}/5")
+    time.sleep(60)
 
 
 ##############################################################

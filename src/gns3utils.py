@@ -1040,6 +1040,165 @@ def create_cluster_of_nodes(
 
     return (cluster_switch, devices, coord_first, coord_last)
 
+def create_cluster_of_nodes_segmented(
+    server: Server,
+    project: ProjectGNS3,
+    num_devices: int,
+    start_x: int,
+    start_y: int,
+    nodes_per_row: int,
+    switch_template_id: str,
+    node_template_id: str,
+    upstream_switch_id: Optional[str],
+    upstream_switch_port: Optional[int],
+    node_start_ip_iface: ipaddress.IPv4Interface,
+    gateway: str,
+    nameserver: str,
+    router_template_id: str,
+    spacing: Optional[float] = 2,
+):
+    """Create cluster of nodes.
+
+          R  <--- gateway (must exist in the topology).
+          |
+          S  <--- upstream switch (must exist in the topology).
+         /
+        R <--- New DMZ router, based on router_template_id
+        |
+        S  <----- cluster switch, based on switch_template_id. At coordinates (start_x, start_y).
+        |
+    n n n n n    |  num_devices number of            first ip address = node_start_ip_iface.ip
+    n n n n n  <-|  nodes, based on                  last ip address = node_start_ip_iface.ip + num_devices - 1
+    n n n n n    |  node_template_id.
+
+    :return: cluster_switch, devices, coord_first, coord_last
+    """
+    assert num_devices > 0
+    assert nodes_per_row > 0
+    assert get_template_from_id(server, switch_template_id)["adapters"] >= (
+        num_devices - (1 if upstream_switch_id else 0)
+    )
+    if not spacing:
+        spacing = 2
+    
+    # create cluster router
+    cluster_router = create_node(server, project, start_x, start_y + (project.grid_unit * spacing), router_template_id)
+
+    # create cluster switch
+    cluster_switch = create_node(server, project, start_x, start_y, switch_template_id)
+    print(f"Created node {cluster_switch['name']}")
+    _, free_adapters = get_node_occupied_free_adapters(
+        node_id=cluster_switch["node_id"], gns3fy_proj=project.gns3fy_proj
+    )
+    if num_devices > len(free_adapters):
+        raise ValueError(
+            f"The cluster switch can be linked to {len(free_adapters) - 1} devices. "
+            f"Current argument: {num_devices=} must be reduced"
+        )
+    # create device grid
+    coord_first = Position(
+        start_x - project.grid_unit * spacing * (nodes_per_row - 1) // 2,
+        start_y + project.grid_unit * spacing,
+    )
+    devices = []
+
+    for dx, dy in make_grid(num_devices, nodes_per_row):
+        device = create_node(
+            server,
+            project,
+            coord_first.x + project.grid_unit * spacing * dx,
+            coord_first.y + project.grid_unit * spacing * dy,
+            node_template_id,
+        )
+        devices.append(device)
+        print(f"Created node {device['name']}")
+        time.sleep(0.1)
+
+    coord_last = Position(devices[-1]["x"], devices[-1]["y"])
+
+    # links
+    if upstream_switch_id:
+        #create_link_easy(server, project, cluster_switch["node_id"], upstream_switch_id)
+        #print(f"Created link {cluster_switch['name']} <--> {upstream_switch_id}")
+        create_link_easy(server, project, cluster_router["node_id"], upstream_switch_id)
+        print(f"Created link {cluster_router['name']} <--> {upstream_switch_id}")
+    for i, device in enumerate(devices, start=1):
+        create_link(server, project, device["node_id"], 0, cluster_switch["node_id"], i)
+        print(f"Creating link {device['name']} <--> {cluster_switch['name']}")
+        time.sleep(0.1)
+    
+    # link cluster switch to cluster router
+    create_link_easy(server, project, cluster_router["node_id"], cluster_switch["node_id"])
+
+    # configure devices
+    for i, device in enumerate(devices, start=0):
+        device_ip_iface = ipaddress.IPv4Interface(
+            f"{node_start_ip_iface.ip + i}/{node_start_ip_iface.netmask}"
+        )
+        set_node_network_interfaces(
+            server,
+            project,
+            device["node_id"],
+            "eth0",
+            device_ip_iface,
+            gateway,
+            nameserver,
+        )
+        print(
+            f"Configuring {device['name']} addr: {device_ip_iface.ip}/{device_ip_iface.netmask} gw: {gateway} ns: {nameserver}"
+        )
+
+    # decoration
+    payload = {
+        "x": int(start_x + project.grid_unit * spacing),
+        "y": int(start_y - 15),
+        "svg": f'<svg><text font-family="monospace" font-size="12">Start addr: {node_start_ip_iface.ip}/{node_start_ip_iface.netmask}</text></svg>',
+    }
+    req = requests.post(
+        f"http://{server.addr}:{server.port}/v2/projects/{project.id}/drawings",
+        data=json.dumps(payload),
+        auth=(server.user, server.password),
+    )
+    req.raise_for_status()
+
+    payload = {
+        "x": int(start_x + project.grid_unit * spacing),
+        "y": int(start_y),
+        "svg": f'<svg><text font-family="monospace" font-size="12">End addr  : {device_ip_iface.ip}/{device_ip_iface.netmask}</text></svg>',
+    }
+    req = requests.post(
+        f"http://{server.addr}:{server.port}/v2/projects/{project.id}/drawings",
+        data=json.dumps(payload),
+        auth=(server.user, server.password),
+    )
+    req.raise_for_status()
+
+    payload = {
+        "x": int(start_x + project.grid_unit * spacing),
+        "y": int(start_y + 15),
+        "svg": f'<svg><text font-family="monospace" font-size="12">Gateway   : {gateway}</text></svg>',
+    }
+    req = requests.post(
+        f"http://{server.addr}:{server.port}/v2/projects/{project.id}/drawings",
+        data=json.dumps(payload),
+        auth=(server.user, server.password),
+    )
+    req.raise_for_status()
+
+    payload = {
+        "x": int(start_x + project.grid_unit * spacing),
+        "y": int(start_y + 30),
+        "svg": f'<svg><text font-family="monospace" font-size="12">Nameserver: {nameserver}</text></svg>',
+    }
+    req = requests.post(
+        f"http://{server.addr}:{server.port}/v2/projects/{project.id}/drawings",
+        data=json.dumps(payload),
+        auth=(server.user, server.password),
+    )
+    req.raise_for_status()
+
+    return (cluster_switch, devices, coord_first, coord_last)
+
 
 def start_capture(server, project, link_ids):
     """Start packet capture (wireshark) in the selected link_ids."""
