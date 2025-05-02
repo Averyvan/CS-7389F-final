@@ -1,4 +1,22 @@
+# CS 7389F Spring 2025 Preamble
+
+This is the code for final project for CS 7389F based on the Gotham IoT Testbed paper (cited below). I ran into many reproducibility issues with the original code repository, so most of my time was spent debugging and trying to reproduce the bare minimum functionality. I go into more detail on this topic in the [Reproducibility Issues](#Reproducibility Issues) section.
+
+## Reproducibility Issues
+
+System: Ubuntu 24.04.2 LTS
+
+| Issue | Fix |
+| ... | ... |
+| Was unable to capture packets in the original [gotham-iot-testbed](https://github.com/xsaga/gotham-iot-testbed) repo | Switched to this downstream GothX repo | 
+| Dependency aler9/rtsp-simple-server was deprecated on April 9, 2025, replaced by [bluenviron/mediamtx](https://hub.docker.com/r/bluenviron/mediamtx) | Changed stream_server's Dockerfile to use new image/repo |
+| GothX: Gotham scenario missing links between main backbone routers | Re-added [the relevant code from the original repository](https://github.com/xsaga/gotham-iot-testbed/blob/master/src/create_topology_gotham.py#L166) |
+| CICflowmeter ignores IPv6 packets, discarding all Gotham packets | Enabled reading IPv6 header in CICFlowMeter/src/main/java/cic/cs/unb/ca/jnetpcap/PacketReader.java |
+
+
 # GothX: a generator of customizable, legitimate and malicious IoT network traffic
+
+This section and beyond are from the original GothX repository, with some sections irrelevant to the project removed.
 
 This repository is a fork from [PekeDevil Gotham Testbed](https://github.com/PekeDevil/gotham-iot-testbed) (X. Sáez-de-Cámara, J. L. Flores, C. Arellano, A. Urbieta and U. Zurutuza, "Gotham Testbed: A Reproducible IoT Testbed for Security Experiments and Dataset Generation," in IEEE Transactions on Dependable and Secure Computing, doi: 10.1109/TDSC.2023.3247166)
 
@@ -34,11 +52,9 @@ If you use or build upon this testbed, please consider citing the article.
       - [Option2: Create router template automatically without gui](#option2--create-router-template-automatically-without-gui)
 - [GothX usage](#gothx-usage)
   * [6 Topology builder](#6-topology-builder)
-      - [6.1 Alternative A: SINETStream (and MQTTSet) topology](#61-alternative-a--sinetstream--and-mqttset--topology)
-      - [6.1 Alternative B: Gotham topology](#61-alternative-b--gotham-topology)
+      - [6.1 Gotham topology](#61-alternative-b--gotham-topology)
   * [7 Scenario execution](#7-scenario-execution)
-      - [7.1 Alternative A: SINETStream topology](#71-alternative-a--sinetstream-topology)
-      - [7.1 Alternative B: Gotham topology](#71-alternative-b--gotham-topology)
+      - [7.1 Gotham topology](#71-alternative-b--gotham-topology)
       - [Possible HTTP error 409 Client Error](#possible-http-error-409-client-error)
   * [8 pcap labelling](#8-pcap-labelling)
 - [Contact](#contact)
@@ -103,23 +119,12 @@ $ source venv/bin/activate
 
 ## 3 Template creation
 
-- If you want to build and run the **SINETStream** topology, follow instructions about **Alternative A** 
-- If you want to build and run the **Gotham** topology, follow instructions about **Alternative B** 
-- Some instructions must be followed regardless of the chosen topology (marked with `Alternative A and B`).
-- We do not guarantee good execution of Gotham related code (Alternative B)
-
 ### 3.1 Build Docker images
 
 All the Dockerfiles and the dependencies that describe the emulated nodes (IoT devices, servers, attackers) are inside the `./Dockerfiles` directory. 
 The build process of some Docker images depend on other images; instead of building them manually, the project includes a `Makefile` to automate the process.
 
-#### 3.1 Alternative A: SINETStream topology
-Build necessary docker images with
-```bash
-$ make sinetstream
-```
-
-#### 3.1 Alternative B: Gotham topology
+#### 3.1 Gotham topology
 Run `make` to automatically build all the Docker images in the correct order:
 ```
 $ make
@@ -282,7 +287,7 @@ Traceback (most recent call last):
     raise HTTPError(http_error_msg, response=self)
 requests.exceptions.HTTPError: 409 Client Error: Conflict for url: http://localhost:3080/v2/projects/7666c9a4-ddc1-41e5-8c3d-5f235bd18073/nodes/faeece40-a02c-450c-8870-d7766b29b3bd/start
 ```
-
+409
 # Contact
 
 manuel[dot]poisson[at]irisa[dot]fr
