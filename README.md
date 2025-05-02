@@ -219,6 +219,10 @@ Inside the `src/` directory, run the scenario
 (venv) $ python3 run_scenario_gotham.py
 ```
 
+Avery's note (I wish the original authors included this info...): If you want to run the original Gotham topology, you need to change the `PROJECT_NAME` variable in `src/run_scenario_gotham.py` from `gotham_scenario_mirai_new` (for gotham2) to `gotham_scenario_mirai` (for gotham).
+
+
+
 ## 8 pcap labelling
 
 From a pcap file, extract network flows with [CICFlowMeter](https://github.com/GintsEngelen/CICFlowMeter), you get a csv file with features. 
